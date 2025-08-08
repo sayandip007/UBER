@@ -1,15 +1,17 @@
-import React, { createContext, useState, useContext } from "react";
+import React, { createContext, useState } from "react";
 
+// This is the actual context you'll consume in components
 export const CaptainDataContext = createContext();
 
-export const CaptainContext = ({ children }) => {
+const CaptainContext = ({ children }) => {
   const [captain, setCaptain] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const updateCaptain = (captainData) => {
-    setCaptainName(captainData);
+    setCaptain(captainData); // 🔧 FIXED: was setCaptainName()
   };
+
   const value = {
     captain,
     setCaptain,
@@ -21,9 +23,10 @@ export const CaptainContext = ({ children }) => {
   };
 
   return (
-    <CaptainDataContext.Provider value={{ value }}>
+    <CaptainDataContext.Provider value={value}> {/* 🔧 FIXED: removed extra {} */}
       {children}
     </CaptainDataContext.Provider>
   );
 };
+
 export default CaptainContext;

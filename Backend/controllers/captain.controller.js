@@ -1,64 +1,116 @@
 const captainModel = require("../models/captain.model");
 const captainService = require("../services/captain.service");
-const {validateResult}=require('express-validator');
+const { validationResult } = require("express-validator");
 const blacklistTokenModel = require("../models/blacklistToken.model");
 
-module.exports.registerCaptain = async (req, res,next) => {
-const errors = validateResult(req);
-if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-}
-const { fullname, email, password,vehicle} = req.body;
-
-const isCaptainAlreadyExists = await captainModel.findOne({ email });
-if (isCaptainAlreadyExists) {   
-    return res.status(400).json({ message: "Captain already exists" });
-}
-
-const hashedPassword = await captainModel.hashPassword(password);
-
-const captain= await captainService.createCaptain({
-    firstname: fullname.firstname,
-    lastname: fullname.lastname,
-    email,
-    password: hashedPassword,
-    color: vehicle.color,
-    plate: vehicle.plate,
-    capacity: vehicle.capacity,
-    vehicleType: vehicle.vehicleType
-});
-const token = captain.generateAuthToken();
-res.status(201).json({ token, captain });
-}
-
-module.exports.loginCaptain = async (req, res, next) => {
-    const errors = validateResult(req);
+module.exports.registerUser = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ errors: errors.array() });
     }
-    const { email, password } = req.body;
-    const captain = await captainModel.findOne({ email }).select("+password");
-    if (!captain) {
-        return res.status(401).json({ message: "Invalid email or password" });
+
+    const {
+      fullname: { firstname, lastname },
+      vehicle: { color, plate, capacity, vehicleType },
+
+      email,
+      password,
+    } = req.body;
+
+    if (
+      !firstname ||
+      !lastname ||
+      !email ||
+      !password ||
+      !color ||
+      !plate ||
+      !capacity ||
+      !vehicleType
+    ) {
+      return res.status(400).json({ message: "All fields are required" });
     }
-    const isMatch = await captain.comparePassword(password);
-    if (!isMatch) {
-        return res.status(401).json({ message: "Invalid email or password" });
+
+    // Check if captain already exists
+    const existingUser = await captainModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Captain already exists" });
     }
+
+    // Hash the password
+    const hashedPassword = await captainModel.hashPassword(password);
+
+    // Create the captain
+    const captain = await captainService.createCaptain({
+      firstname,
+      lastname,
+      email,
+      password: hashedPassword,
+      color,
+      plate,
+      capacity,
+      vehicleType,
+    });
+
     const token = captain.generateAuthToken();
-    res.cookie("token", token);
-    res.status(200).json({ token, captain });
-}
 
-module.exports.getCaptainProfile = async (req, res, next) => {
-    res.status(200).json(req.captain);
-}
+    res.status(201).json({ token, user: captain });
+  } catch (error) {
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
-module.exports.logoutCaptain = async (req, res, next) => {
+module.exports.loginUser = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+
+    const user = await captainModel.findOne({ email }).select("+password");
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    const token = user.generateAuthToken();
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.status(200).json({ token, user });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports.getUserProfile = async (req, res, next) => {
+  res.status(200).json(req.user);
+};
+
+module.exports.logoutUser = async (req, res, next) => {
+  try {
     const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
 
-    await blacklistTokenModel.create({ token });
-    res.clearCookie("token");
+    if (token) {
+      await blacklistTokenModel.create({ token });
+    }
 
-    res.status(200).json({ message: "Logged out successfully" });
-}
+    res.clearCookie("token");
+    res.status(200).json({ message: "Logged out" });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
