@@ -57,7 +57,7 @@ module.exports.getAutoCompleteSuggestions = async (input) => {
         throw new Error('query is required');
     }
 
-    const apiKey = process.env.GOOGLE_MAPS_API_Key;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${apiKey}`;
 
     try {
