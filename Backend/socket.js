@@ -7,8 +7,12 @@ let io;
 function initializeSocket(server) {
     io = socketIo(server, {
         cors: {
-            origin: '*',
-            methods: [ 'GET', 'POST' ]
+            origin: [
+                "https://rider-007.netlify.app/", // ✅ Your Netlify frontend
+                "http://localhost:5173" // ✅ Local dev
+            ],
+            methods: ["GET", "POST"],
+            credentials: true
         }
     });
 
