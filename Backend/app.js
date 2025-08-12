@@ -12,7 +12,11 @@ const rideRoutes = require('./routes/ride.routes');
 
 connectToDb();
 
-app.use(cors());
+app.use(cors({
+    origin: "https://rider-007.netlify.app", // your actual Netlify domain
+    credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
